@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Générateur d'Étiquettes — La Fabuleuse Cantine</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;600;700;800;900&family=Space+Mono:wght@400;700&display=swap');
+
+  :root {
+    --purple: #5a1a8a;
+    --green: #4caf50;
+    --label-size: 560px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Montserrat', sans-serif;
+    background: #1a1a2e;
+    color: #eee;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    background: #0f0f1a;
+    border-bottom: 3px solid var(--purple);
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem;
+    letter-spacing: 3px;
+    color: var(--purple);
+  }
+  header span {
+    font-size: 0.75rem;
+    color: #888;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .workspace {
+    display: flex;
+    flex: 1;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  /* ─── FORM PANEL ─── */
+  .form-panel {
+    width: 380px;
+    min-width: 380px;
+    background: #13132a;
+    border-right: 2px solid #2a2a4a;
+    overflow-y: auto;
+    padding: 24px 20px 40px;
+  }
+
+  .section-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 3px;
+    color: var(--purple);
+    border-bottom: 1px solid #2a2a4a;
+    padding-bottom: 6px;
+    margin: 20px 0 12px;
+  }
+
+  label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #aaa;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  input[type="text"], input[type="number"], input[type="date"], textarea, select {
+    width: 100%;
+    background: #0f0f1a;
+    border: 1.5px solid #2a2a4a;
+    color: #eee;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.82rem;
+    margin-bottom: 12px;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--purple);
+  }
+  textarea { resize: vertical; min-height: 72px; }
+
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .toggle-row label { margin: 0; }
+
+  input[type="checkbox"] {
+    appearance: none;
+    width: 36px;
+    height: 20px;
+    background: #2a2a4a;
+    border-radius: 20px;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  input[type="checkbox"]::after {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    top: 3px; left: 3px;
+    transition: left 0.2s;
+  }
+  input[type="checkbox"]:checked { background: var(--green); }
+  input[type="checkbox"]:checked::after { left: 19px; }
+
+  .badge-type {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .badge-type button {
+    background: #1a1a3a;
+    border: 2px solid #2a2a4a;
+    color: #ccc;
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+  }
+  .badge-type button.active {
+    background: var(--purple);
+    border-color: var(--purple);
+    color: #fff;
+  }
+
+  .btn-print {
+    width: 100%;
+    background: var(--purple);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 14px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 3px;
+    cursor: pointer;
+    margin-top: 24px;
+    transition: background 0.2s;
+  }
+  .btn-print:hover { background: #7a2aaa; }
+
+  .btn-secondary {
+    width: 100%;
+    background: transparent;
+    color: var(--green);
+    border: 2px solid var(--green);
+    border-radius: 8px;
+    padding: 10px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 3px;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: all 0.2s;
+  }
+  .btn-secondary:hover { background: var(--green); color: #fff; }
+
+  /* ─── PREVIEW PANEL ─── */
+  .preview-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 40px 20px;
+    overflow-y: auto;
+    background: radial-gradient(ellipse at center, #1e1e3a 0%, #0d0d1a 100%);
+  }
+
+  .preview-panel h2 {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.7rem;
+    color: #555;
+    letter-spacing: 3px;
+    margin-bottom: 30px;
+    text-transform: uppercase;
+  }
+
+  /* ─── THE LABEL ─── */
+  #label-preview {
+    width: var(--label-size);
+    height: var(--label-size);
+    border-radius: 50%;
+    border: 6px solid var(--purple);
+    background: #fff;
+    color: #000;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    box-shadow: 0 0 60px rgba(90, 26, 138, 0.4), 0 0 0 12px rgba(90,26,138,0.08);
+    flex-shrink: 0;
+  }
+
+  .label-left {
+    width: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 12px 40px 40px;
+    gap: 0;
+  }
+
+  .label-logo-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+
+  .label-logo {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 2.5px solid var(--purple);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem;
+    color: var(--purple);
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+  .label-logo small {
+    font-size: 0.28rem;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: var(--purple);
+    text-align: center;
+    line-height: 1.2;
+    margin-top: 2px;
+  }
+
+  .label-brand {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.4rem;
+    color: var(--purple);
+    letter-spacing: 3px;
+    line-height: 1;
+    text-align: center;
+    margin-bottom: 2px;
+  }
+
+  .label-tagline {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 0.6rem;
+    color: var(--green);
+    letter-spacing: 2.5px;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+
+  .label-divider {
+    width: 80%;
+    height: 2px;
+    background: var(--purple);
+    margin: 6px auto;
+  }
+
+  .label-product-name {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 900;
+    color: #111;
+    text-align: center;
+    text-transform: uppercase;
+    line-height: 1.2;
+    margin: 6px 0 8px;
+  }
+
+  .label-type-badge {
+    background: var(--purple);
+    color: #fff;
+    font-size: 0.5rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    border-radius: 10px;
+    padding: 2px 10px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .label-serving {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.55rem;
+    font-weight: 600;
+    color: #222;
+    margin-top: 6px;
+  }
+  .label-serving .icon {
+    font-size: 1rem;
+  }
+  .label-serving .time-box {
+    background: #f5f5f5;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 0.52rem;
+    font-weight: 700;
+  }
+
+  .label-discover {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 0.65rem;
+    color: var(--purple);
+    letter-spacing: 2px;
+    margin-top: 10px;
+    text-align: center;
+  }
+
+  .label-qr {
+    margin-top: 6px;
+    display: flex;
+    justify-content: center;
+  }
+  .label-qr canvas, .label-qr img { width: 70px !important; height: 70px !important; }
+
+  .label-bottom-text {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 0.85rem;
+    letter-spacing: 4px;
+    color: var(--purple);
+    white-space: nowrap;
+  }
+
+  /* RIGHT SIDE */
+  .label-right {
+    width: 50%;
+    padding: 50px 30px 80px 12px;
+    display: flex;
+    flex-direction: column;
+    font-size: 0.58rem;
+    line-height: 1.45;
+    color: #111;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    border-left: 1px solid #ddd;
+  }
+
+  .label-right .section-label {
+    font-weight: 700;
+    margin-top: 4px;
+  }
+
+  .stars {
+    color: var(--purple);
+    font-size: 0.5rem;
+    letter-spacing: 1px;
+    margin: 4px 0;
+  }
+
+  .bio-badges {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .ab-badge {
+    background: var(--green);
+    color: #fff;
+    font-size: 0.55rem;
+    font-weight: 900;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 1px;
+  }
+  .eu-bio {
+    font-size: 0.45rem;
+    color: #555;
+    font-family: 'Montserrat', sans-serif;
+    font-style: italic;
+  }
+
+  /* ─── PRINT ─── */
+  @media print {
+    body { background: #fff; }
+    header, .form-panel, .preview-panel h2 { display: none !important; }
+    .workspace { display: block; }
+    .preview-panel {
+      padding: 0;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    #label-preview {
+      box-shadow: none;
+      --label-size: 200mm;
+      width: 200mm;
+      height: 200mm;
+    }
+    .label-brand { font-size: 2rem; }
+    .label-right { font-size: 0.55rem; }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #0f0f1a; }
+  ::-webkit-scrollbar-thumb { background: var(--purple); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏺 Générateur d'Étiquettes</h1>
+  <span>LA FABULEUSE CANTINE · LE BOCAL</span>
+</header>
+
+<div class="workspace">
+
+  <!-- ─── FORM ─── -->
+  <div class="form-panel">
+
+    <div class="section-title">🍽️ Produit</div>
+
+    <label>Type de plat</label>
+    <div class="badge-type" id="type-buttons">
+      <button class="active" onclick="setType('Plat', this)">Plat</button>
+      <button onclick="setType('Tapas', this)">Tapas</button>
+      <button onclick="setType('Soupe', this)">Soupe</button>
+      <button onclick="setType('Dessert', this)">Dessert</button>
+      <button onclick="setType('Entrée', this)">Entrée</button>
+      <button onclick="setType('Sauce', this)">Sauce</button>
+      <button onclick="setType('', this)">Autre…</button>
+    </div>
+    <input type="text" id="custom-type" placeholder="Type personnalisé" oninput="update()" style="display:none">
+
+    <label>Nom du plat</label>
+    <input type="text" id="product-name" placeholder="ex : Wok Asiatique et Pancetta de Veau" oninput="update()">
+
+    <label>Sous-titre / Tagline</label>
+    <input type="text" id="tagline" value="LOCAL, DE SAISON ET FAIT MAISON" oninput="update()">
+
+    <div class="section-title">📋 Ingrédients & Nutrition</div>
+
+    <label>Ingrédients</label>
+    <textarea id="ingredients" placeholder="Nouilles chinoises au blé (50%) - Légumes (12%) : Poireaux, choux, oignons…" oninput="update()"></textarea>
+
+    <div class="row-2">
+      <div>
+        <label>Énergie (kJ)</label>
+        <input type="number" id="kj" placeholder="2456" oninput="update()">
+      </div>
+      <div>
+        <label>Énergie (kcal)</label>
+        <input type="number" id="kcal" placeholder="486" oninput="update()">
+      </div>
+    </div>
+    <div class="row-2">
+      <div>
+        <label>Protéines (g)</label>
+        <input type="number" id="proteins" placeholder="21.2" step="0.1" oninput="update()">
+      </div>
+      <div>
+        <label>Glucides (g)</label>
+        <input type="number" id="carbs" placeholder="15" step="0.1" oninput="update()">
+      </div>
+    </div>
+    <div class="row-2">
+      <div>
+        <label>Lipides (g)</label>
+        <input type="number" id="fats" placeholder="8" step="0.1" oninput="update()">
+      </div>
+      <div>
+        <label>Poids net (g)</label>
+        <input type="number" id="weight" placeholder="300" oninput="update()">
+      </div>
+    </div>
+
+    <div class="section-title">🍳 Service</div>
+
+    <label>Mode de service</label>
+    <div class="badge-type" id="serve-buttons">
+      <button class="active" onclick="setServe('Servir chaud', this)">Chaud</button>
+      <button onclick="setServe('Servir froid', this)">Froid</button>
+      <button onclick="setServe('À température ambiante', this)">Ambiant</button>
+    </div>
+
+    <div class="row-2">
+      <div>
+        <label>Bain-marie (min)</label>
+        <input type="number" id="bain-marie" placeholder="10" oninput="update()">
+      </div>
+      <div>
+        <label>Micro-ondes (min)</label>
+        <input type="number" id="micro" placeholder="5" oninput="update()">
+      </div>
+    </div>
+
+    <div class="section-title">⚗️ Conservation & Traçabilité</div>
+
+    <label>Température de conservation</label>
+    <input type="text" id="storage-temp" value="Entre 2 et 4°C" oninput="update()">
+
+    <label>Consommation après ouverture</label>
+    <input type="text" id="storage-after" value="Dans les 24h" oninput="update()">
+
+    <label>Allergènes (note)</label>
+    <input type="text" id="allergens" value="Peut contenir une présence fortuite d'allergènes dans les aliments." oninput="update()">
+
+    <div class="row-2">
+      <div>
+        <label>À consommer avant</label>
+        <input type="date" id="best-before" oninput="update()">
+      </div>
+      <div>
+        <label>N° de lot</label>
+        <input type="text" id="lot" placeholder="LOT-00001" oninput="update()">
+      </div>
+    </div>
+
+    <div class="section-title">🌿 Labels & QR Code</div>
+
+    <div class="toggle-row">
+      <input type="checkbox" id="is-bio" onchange="update()" checked>
+      <label for="is-bio">Agriculture Biologique (AB)</label>
+    </div>
+    <div class="toggle-row">
+      <input type="checkbox" id="is-local" onchange="update()" checked>
+      <label for="is-local">Produit local</label>
+    </div>
+    <div class="toggle-row">
+      <input type="checkbox" id="is-handmade" onchange="update()" checked>
+      <label for="is-handmade">Fait maison</label>
+    </div>
+
+    <label>URL du QR code</label>
+    <input type="text" id="qr-url" placeholder="https://lafabuleusecantine.fr" value="https://lafabuleusecantine.fr" oninput="updateQR()">
+
+    <button class="btn-print" onclick="window.print()">🖨️ Imprimer / Exporter PDF</button>
+    <button class="btn-secondary" onclick="saveHTML()">💾 Sauvegarder HTML</button>
+
+  </div>
+
+  <!-- ─── PREVIEW ─── -->
+  <div class="preview-panel">
+    <h2>APERÇU EN TEMPS RÉEL</h2>
+
+    <div id="label-preview">
+
+      <!-- LEFT HALF -->
+      <div class="label-left">
+        <div class="label-logo-area">
+          <div class="label-logo">
+            LFC
+            <small>RENVERSER<br>LA TABLE</small>
+          </div>
+        </div>
+
+        <div class="label-brand">LE BOCAL</div>
+        <div class="label-tagline" id="lbl-tagline">LOCAL, DE SAISON ET FAIT MAISON</div>
+        <div class="label-divider"></div>
+
+        <div id="lbl-type-badge" class="label-type-badge">Plat</div>
+        <div class="label-product-name" id="lbl-product-name">NOM DU PLAT</div>
+        <div class="label-divider"></div>
+
+        <div class="label-serving" id="lbl-serving">
+          <span class="icon">🍽️</span>
+          <span id="lbl-serve-mode">Servir chaud</span>
+          <span class="time-box" id="lbl-bm">🌊 10 min.</span>
+          <span class="time-box" id="lbl-micro">📡 5 min.</span>
+        </div>
+
+        <div class="label-discover">🔗 Découvrez notre univers</div>
+        <div class="label-qr" id="qr-container"></div>
+      </div>
+
+      <!-- RIGHT HALF -->
+      <div class="label-right">
+        <span class="section-label">Ingrédients :</span>
+        <span id="lbl-ingredients">–</span>
+
+        <div class="stars">★★★★★★★★★★★★★★</div>
+
+        <span class="section-label">Valeurs nutritionnelles :</span>
+        <span id="lbl-nutrition">–</span>
+        <em style="font-size:0.5rem; color:#555">Valeurs moyennes par bocal</em>
+
+        <div class="stars">★★★★★★★★★★★★★★</div>
+
+        <span id="lbl-allergens">–</span>
+        <span id="lbl-storage">–</span>
+
+        <div class="stars">★★★★★★★★★★★★★★</div>
+
+        <span class="section-label">À consommer jusqu'au :</span>
+        <span id="lbl-best-before">00/00/0000</span>
+        <span id="lbl-lot">LOT N°00000</span>
+
+        <div id="lbl-bio-badges" class="bio-badges">
+          <span class="ab-badge">AB</span>
+          <span class="eu-bio">Agriculture Biologique<br>Certifié FR-BIO-09</span>
+        </div>
+      </div>
+
+      <div class="label-bottom-text">LA FABULEUSE CANTINE</div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// State
+let currentType = 'Plat';
+let currentServe = 'Servir chaud';
+let qrInstance = null;
+
+function setType(type, btn) {
+  document.querySelectorAll('#type-buttons button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentType = type;
+  const customInput = document.getElementById('custom-type');
+  customInput.style.display = (type === '') ? 'block' : 'none';
+  update();
+}
+
+function setServe(mode, btn) {
+  document.querySelectorAll('#serve-buttons button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentServe = mode;
+  update();
+}
+
+function val(id) {
+  return document.getElementById(id)?.value?.trim() || '';
+}
+
+function checked(id) {
+  return document.getElementById(id)?.checked;
+}
+
+function update() {
+  // Product name
+  const name = val('product-name') || 'NOM DU PLAT';
+  document.getElementById('lbl-product-name').textContent = name.toUpperCase();
+
+  // Tagline
+  const tg = val('tagline') || 'LOCAL, DE SAISON ET FAIT MAISON';
+  document.getElementById('lbl-tagline').textContent = tg.toUpperCase();
+
+  // Type badge
+  const customType = val('custom-type');
+  const type = (currentType === '' ? customType : currentType) || 'Plat';
+  document.getElementById('lbl-type-badge').textContent = type.toUpperCase();
+
+  // Ingredients
+  const ing = val('ingredients') || '–';
+  document.getElementById('lbl-ingredients').textContent = ing;
+
+  // Nutrition
+  const kj = val('kj');
+  const kcal = val('kcal');
+  const prot = val('proteins');
+  const carbs = val('carbs');
+  const fats = val('fats');
+  const weight = val('weight');
+  let nutr = '';
+  if (kj || kcal) nutr += `Énergie : ${kj || '?'}kJ / ${kcal || '?'}kcal`;
+  if (prot) nutr += ` — Protéines : ${prot}g`;
+  if (carbs) nutr += ` — Glucides : ${carbs}g`;
+  if (fats) nutr += ` — Lipides : ${fats}g`;
+  document.getElementById('lbl-nutrition').textContent = nutr || '–';
+
+  // Storage
+  const temp = val('storage-temp');
+  const after = val('storage-after');
+  let storageText = '';
+  if (temp) storageText += `À conserver ${temp.toLowerCase()}. `;
+  if (after) storageText += `Après ouverture, consommer ${after.toLowerCase()}. `;
+  if (weight) storageText += `Poids net ${weight}g`;
+  document.getElementById('lbl-storage').textContent = storageText || '–';
+
+  // Allergens
+  document.getElementById('lbl-allergens').textContent = val('allergens') || '';
+
+  // Dates & lot
+  const bbRaw = val('best-before');
+  let bbFormatted = '00/00/0000';
+  if (bbRaw) {
+    const d = new Date(bbRaw);
+    bbFormatted = d.toLocaleDateString('fr-FR');
+  }
+  document.getElementById('lbl-best-before').textContent = bbFormatted;
+  document.getElementById('lbl-lot').textContent = val('lot') ? `LOT ${val('lot')}` : 'LOT N°00000';
+
+  // Serving
+  document.getElementById('lbl-serve-mode').textContent = currentServe;
+  const bm = val('bain-marie');
+  const mc = val('micro');
+  document.getElementById('lbl-bm').textContent = `🌊 ${bm || '–'} min.`;
+  document.getElementById('lbl-micro').textContent = `📡 ${mc || '–'} min.`;
+  document.getElementById('lbl-bm').style.display = bm ? 'inline' : 'none';
+  document.getElementById('lbl-micro').style.display = mc ? 'inline' : 'none';
+
+  // Bio badges
+  const bioBadges = document.getElementById('lbl-bio-badges');
+  bioBadges.style.display = checked('is-bio') ? 'flex' : 'none';
+
+  // Tagline composition
+  const parts = [];
+  if (checked('is-local')) parts.push('LOCAL');
+  if (checked('is-handmade')) parts.push('FAIT MAISON');
+  const taglineBase = val('tagline');
+  if (!taglineBase) {
+    document.getElementById('lbl-tagline').textContent = parts.length ? `DE SAISON · ${parts.join(' · ')}` : 'DE SAISON';
+  }
+}
+
+function updateQR() {
+  const url = val('qr-url') || 'https://lafabuleusecantine.fr';
+  const container = document.getElementById('qr-container');
+  container.innerHTML = '';
+  try {
+    new QRCode(container, {
+      text: url,
+      width: 70,
+      height: 70,
+      colorDark: '#5a1a8a',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } catch(e) {
+    container.innerHTML = '<div style="font-size:0.5rem;color:#888">QR indisponible</div>';
+  }
+}
+
+function saveHTML() {
+  const blob = new Blob([document.documentElement.outerHTML], { type: 'text/html' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'etiquette-' + (val('product-name') || 'bocal').replace(/\s+/g, '-').toLowerCase() + '.html';
+  a.click();
+}
+
+// Init
+window.addEventListener('load', () => {
+  // Set default bain-marie and micro
+  document.getElementById('bain-marie').value = '10';
+  document.getElementById('micro').value = '5';
+  document.getElementById('ingredients').value = 'Nouilles chinoises au blé (50%) - Légumes (12%) : Poireaux, choux, oignons, épinards, navets, panais - Huile de pépin, huile de sésame, ail, gingembre, graines de lin, coriandre - Pancetta de veau (20%)';
+  document.getElementById('product-name').value = 'Wok Asiatique et Pancetta de Veau';
+  document.getElementById('kj').value = '2456';
+  document.getElementById('kcal').value = '486';
+  document.getElementById('proteins').value = '21.2';
+  document.getElementById('carbs').value = '15';
+  document.getElementById('fats').value = '8';
+  document.getElementById('weight').value = '300';
+  document.getElementById('lot').value = 'N°00000';
+  updateQR();
+  update();
+});
+</script>
+</body>
+</html>
